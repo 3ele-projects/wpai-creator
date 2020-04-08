@@ -9,6 +9,11 @@ RUN  apt-get update  &&\
 
 COPY app /home/app
 RUN pip3 install  -r home/app/requirements.txt
+ARG PASSWORD
+ARG USER
+
+
+
 
 WORKDIR /home/app
 #ENTRYPOINT [ "python3" ]

@@ -1,16 +1,17 @@
-# flask_web/app.py
 from datetime import datetime
-from flask import Flask
-from flask import jsonify
-app = Flask(__name__)
+import pathlib
+from flask import Flask, jsonify, send_from_directory, request, send_file
+app = Flask(__name__, static_folder=None)
 import os
 import requests
 import shutil
 from shutil import make_archive
 from zipfile import ZipFile 
 import urllib.request, json 
-    #get download files
-from flask import request
+
+UPLOAD_DIRECTORY = "./home/app/wp/"
+root_path = str(pathlib.Path(__file__).parent.absolute())+'/wp'
+
 def download_url(url, save_path, chunk_size=128):
     r = requests.get(url, stream=True)
     with open(save_path, 'wb') as fd:
@@ -102,27 +103,60 @@ def unzip(zip_file):
     else:
         print ("Successfully unzip the directory %s " % zip_file)
         pass
+
+def is_admin():
+    print(os.environ["USER"])
+    print(os.environ["PASSWORD"])
+
+    request.path.startswith('/build/')
+    user = request.args.get('user')
+    password = request.args.get('password')
+    if ((user == os.environ["USER"]) and (password == os.environ["PASSWORD"])):
+        return True
+
+@app.before_first_request
+def check_for_admin():
+     
+    if request.path.startswith('/build/'):
+        if not is_admin():
+            return 404
         
-        
+@app.route('/<int:setup_id>/wordpress.zip')
+def download_file(setup_id):
+        path = UPLOAD_DIRECTORY +'/'+str(setup_id)
+        root_path = str(pathlib.Path(__file__).parent.absolute())+'/wp/'+str(setup_id)+'/'
+        print (root_path)
 
-
-    
-
-
-
-
-
-
+        try:
+            print ('return')
+            return send_file(
+            root_path +'wordpress.zip',
+            mimetype='application/zip',
+            as_attachment=True,
+            attachment_filename='wordpress.zip')
+            #return send_from_directory(root_path, 'wordpress.zip', as_attachment=True, mimetype='application/zip', attachment_filename='wordpress.zip')
+        except FileNotFoundError:
+            return 404
+            
+       
 @app.route('/build/<id>', methods=['GET'])
 def home(id):
+    if not is_admin():
+            response = app.response_class(
+         
+            status=403,
+            mimetype='application/json'
+        )
+            return response
+            
     print (id) 
     data = {}
-    root_path = os.getcwd()+'/wp'
-    with urllib.request.urlopen("http://json.testing.threeelements.de/"+str(id)) as url:
+    
+    with urllib.request.urlopen("https://portal.3ele.de/wpai/setups/"+str(id)) as url:
         configdata = json.loads(url.read().decode())
         setup = configdata['setup']
         try:
-            create_instance(id, setup, root_path)
+            create_instance(id, setup,root_path)
         #     create_instance(24, setup, root_path)
 
 
@@ -157,4 +191,4 @@ def home(id):
         
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=False, host='0.0.0.0')
