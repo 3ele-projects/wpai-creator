@@ -21,3 +21,4 @@ WORKDIR /home/app
 RUN chmod +x ./start.sh
 RUN chown -R www-data:www-data ./wp
 CMD ["./start.sh"]
+EXPOSE 5000
